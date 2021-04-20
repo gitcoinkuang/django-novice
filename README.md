@@ -306,8 +306,8 @@ URL请求与刚才定义的模式匹配时，Django将在文件`views.py`中查�
 ```
 这个文件的第一部分创建一个包含项目名的段落，该段落也是到主页的链接。为创建链接，使用了一个模板标签 ，它是用花括号和百分号（{% %} ）表示的。
 
-模板标签是一小段代码，生成要在页面中显示的信息。这里的模板标签{% url
-'learning_logs:index' %} 生成一个URL，该URL与在learning_logs/urls.py中定义的名为'index' 的URL模式匹配（见❶）。在本例中，learning_logs 是一个命名空间 ，而index 是该命名空间中一个名称独特的URL模式。这个命名空间来自在文件learning_logs/urls.py中赋给app_name 的值。
+模板标签是一小段代码，生成要在页面中显示的信息。这里的模板标签`{% url
+'learning_logs:index' %}` 生成一个URL，该URL与在`learning_logs/urls.py`中定义的名为`'index'` 的URL模式匹配（见❶）。在本例中，`learning_logs` 是一个命名空间 ，而index 是该命名空间中一个名称独特的URL模式。这个命名空间来自在文件`learning_logs/urls.py`中赋给app_name 的值。
 
 通过使用模板标签来生成URL，能很容易地确保链接是最新的：只需修改urls.py中的URL模式，Django就会在页面下次被请求时自动插入修改后的URL。在本项目中，每个页面都将继承base.html，因此从现在开始，每个页面都包含到主页的链接。
 
@@ -329,3 +329,75 @@ learning about.</p>
 模板继承的优点开始显现出来了：在子模板中，只需包含当前页面特有的内容。这不仅简化了每个模板，还使得网站修改起来容易得多。要修改很多页面都包含的元素，只需修改父模板即可，所做的修改将传导到继承该父模板的每个页面。在包含数十乃至数百个页面的项目中，这种结构使得网站改进起来更容易、更快捷。
 
 注意 在大型项目中，通常有一个用于整个网站的父模板base.html，且网站的每个主要部分都有一个父模板。每个部分的父模板都继承base.html，而网站的每个页面都继承相应部分的父模板。这让你能够轻松地修改整个网站的外观、网站任何一部分的外观以及任何一个页面的外观。这种配置提供了一种效率极高的工作方式，让你乐意不断地去改进网站。
+
+### 显示所有主题页面
+有了高效的页面创建方法，就能专注于另外两个页面了：显示所有主题的页面和显示特定主题中条目的页面。前者显示用户创建的所有主题，它是第一个需要使用数据的页面。
+
+#### URL模式
+首先，定义显示所有主题的页面的URL。我们通常使用一个简单的URL片段来指出页面显示的信息，这里使用单词topics，因此URL `http://localhost:8000/topics/`将返回显示所有主题的页面。下面演示了该如何修改`learning_logs/urls.py`
+```python
+"""为learning_logs定义URL模式。"""
+--snip--
+urlpatterns = [
+# 主页
+path('', views.index, name='index'),
+# 显示所有的主题。
+❶ path('topics/', views.topics, name='topics'),
+]
+```
+这里在用于主页URL的字符串参数中添加了`topics/` （见❶）。Django检查请求的URL时，这个模式与如下URL匹配：基础URL后面跟着`topics`。可在末尾包含斜杠，也可省略，但单词topics后面不能有任何东西，否则就与该模式不匹配。URL与该模式匹配的请求都将交给`views.py`中的函数`topics()`处理。
+
+#### 视图
+函数`topics()`需要从数据库中获取一些数据，并将其交给模板。需要在`views.py`中添加的代码如下
+```python
+from django.shortcuts import render
+❶ from .models import Topic
+def index(request):
+--snip--
+❷ def topics(request):
+"""显示所有的主题。"""
+❸ topics = Topic.objects.order_by('date_added')
+❹ context = {'topics': topics}
+❺ return render(request, 'learning_logs/topics.html', context)
+```
+首先导入与所需数据相关联的模型（见❶）。函数topics()包含一个形参：Django从服务器那里收到的request 对象（见❷）。在❸处，查询数据库——请求提供Topic 对象，并根据
+属性date_added 进行排序。返回的查询集被存储在topics中。
+
+在❹处，定义一个将发送给模板的上下文。上下文 是一个字典，其中的键是将在模板中用来访问数据的名称，而值是要发送给模板的数据。这里只有一个键值对，包含一组将在页面中显示的主题。创建使用数据的页面时，除了对象request 和模板的路径外，还将变量context 传递给render() （见❺）。
+
+#### 模板
+显示所有主题的页面的模板接受字典`context` ，以便使用`topics()` 提供的数据。请创建一个文件，将其命名为`topics.html`，并存储到`index.html`所在的目录中。下面演示了如何在这个模板中显示主题
+```html
+{% extends "learning_logs/base.html" %}
+{% block content %}
+<p>Topics</p>
+❶ <ul>
+❷ {% for topic in topics %}
+❸ <li>{{ topic }}</li>
+❹ {% empty %}
+<li>No topics have been added yet.</li>
+❺ {% endfor %}
+❻ </ul>
+{% endblock content %}
+```
+就像模板`index.html`中一样，首先使用标签`{% extends %}` 来继承`base.html`，再开始定义`content` 块。这个页面的主体是一个项目列表，其中列出了用户输入的主题。在标准HTML中，项目列表称为无序列表 ，用标签`<ul></ul>` 表示。包含所有主题的项目列表始于❶处。
+
+在❷处，使用一个相当于for 循环的模板标签，它遍历字典`context` 中的列表`topics` 。模板中使用的代码与Python代码存在一些重要差别：Python使用缩进来指出哪些代码行是for 循环的组成部分；而在模板中，每个for 循环都必须使用`{% endfor %}` 标签来显式地指出其结束位置。因此在模板中，循环类似于下面这样
+```python
+{% for item in list %}
+do something with each item
+{% endfor %}
+```
+在循环中，要将每个主题转换为项目列表中的一项。要在模板中打印变量，需要将变量名用双花括号括起。这些花括号不会出现在页面中，只是用于告诉Django我们使用了一个模板变量。因此每次循环时，❸处的代码`{{ topic }}` 都被替换为topic 的当前值。HTML标签`<li></li>` 表示一个项目列表项 。在标签对`<ul></ul>` 内部，位于标签`<li> 和</li>` 之间的内容都是一个项目列表项。
+
+在❹处，使用模板标签`{% empty %}` ，它告诉Django在列表topics 为空时该如何办。这里是打印一条消息，告诉用户还没有添加任何主题。最后两行分别结束for 循环（见❺）和项目列表（见❻）。
+
+现在需要修改父模板，使其包含到显示所有主题的页面的链接。为此，在其中添加如下代码
+```html
+<p>
+❶ <a href="{% url 'learning_logs:index' %}">Learning Log</a> -
+❷ <a href="{% url 'learning_logs:topics' %}">Topics</a>
+</p>
+{% block content %}{% endblock content %}
+```
+在到主页的链接后面添加一个连字符（见❶），再添加一个到显示所有主题的页面的链接——使用的也是模板标签`{% url%}` （见❷）。这行让Django生成一个链接，它与`learning_logs/urls.py`中名为`'topics'` 的URL模式匹配。
