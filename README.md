@@ -309,7 +309,7 @@ URL请求与刚才定义的模式匹配时，Django将在文件`views.py`中查�
 模板标签是一小段代码，生成要在页面中显示的信息。这里的模板标签`{% url
 'learning_logs:index' %}` 生成一个URL，该URL与在`learning_logs/urls.py`中定义的名为`'index'` 的URL模式匹配（见❶）。在本例中，`learning_logs` 是一个命名空间 ，而index 是该命名空间中一个名称独特的URL模式。这个命名空间来自在文件`learning_logs/urls.py`中赋给app_name 的值。
 
-通过使用模板标签来生成URL，能很容易地确保链接是最新的：只需修改urls.py中的URL模式，Django就会在页面下次被请求时自动插入修改后的URL。在本项目中，每个页面都将继承base.html，因此从现在开始，每个页面都包含到主页的链接。
+通过使用模板标签来生成URL，能很容易地确保链接是最新的：只需修改`urls.py`中的URL模式，Django就会在页面下次被请求时自动插入修改后的URL。在本项目中，每个页面都将继承`base.html`，因此从现在开始，每个页面都包含到主页的链接。
 
 在❷处，我们插入了一对块 标签。这个块名为content ，是一个占位符，其中包含的信息由子模板指定。子模板并非必须定义父模板中的每个块，因此在父模板中，可使用任意多个块来预留空间，而子模板可根据需要定义相应数量的块。
 
@@ -322,9 +322,9 @@ URL请求与刚才定义的模式匹配时，Django将在文件`views.py`中查�
 learning about.</p>
 ❸ {% endblock content %}
 ```
-如果将这些代码与原来的index.html进行比较，将发现标题Learning Log没有了，取而代之的是指定要继承哪个模板的代码（见❶）。子模板的第一行必须包含标签{% extends %}，让Django知道它继承了哪个父模板。文件base.html位于文件夹learning_logs中，因此父模板路径中包含learning_logs。这行代码导入模板base.html的所有内容，让index.html能够指定要在content 块预留的空间中添加的内容。
+如果将这些代码与原来的`index.html`进行比较，将发现标题Learning Log没有了，取而代之的是指定要继承哪个模板的代码（见❶）。子模板的第一行必须包含标签`{% extends %}`，让Django知道它继承了哪个父模板。文件`base.html`位于文件夹learning_logs中，因此父模板路径中包含learning_logs。这行代码导入模板base.html的所有内容，让`index.html`能够指定要在content 块预留的空间中添加的内容。
 
-在❷处，插入了一个名为content 的{% block %} 标签，以定义content 块。不是从父模板继承的内容都包含在content块中，在这里是一个描述项目“学习笔记”的段落。在❸处，使用标签{% endblock content %} 指出了内容定义的结束位置。在标签{% endblock %} 中，并非必须指定块名，但如果模板包含多个块，指定块名有助于确定结束的是哪个块。
+在❷处，插入了一个名为content 的`{% block %}` 标签，以定义content 块。不是从父模板继承的内容都包含在content块中，在这里是一个描述项目“学习笔记”的段落。在❸处，使用标签`{% endblock content %}` 指出了内容定义的结束位置。在标签`{% endblock %}` 中，并非必须指定块名，但如果模板包含多个块，指定块名有助于确定结束的是哪个块。
 
 模板继承的优点开始显现出来了：在子模板中，只需包含当前页面特有的内容。这不仅简化了每个模板，还使得网站修改起来容易得多。要修改很多页面都包含的元素，只需修改父模板即可，所做的修改将传导到继承该父模板的每个页面。在包含数十乃至数百个页面的项目中，这种结构使得网站改进起来更容易、更快捷。
 
@@ -401,3 +401,56 @@ do something with each item
 {% block content %}{% endblock content %}
 ```
 在到主页的链接后面添加一个连字符（见❶），再添加一个到显示所有主题的页面的链接——使用的也是模板标签`{% url%}` （见❷）。这行让Django生成一个链接，它与`learning_logs/urls.py`中名为`'topics'` 的URL模式匹配。
+
+### 显示特定主题的页面
+接下来，需要创建一个专注于特定主题的页面，它显示该主题的名称以及所有条目。我们同样将定义一个新的URL模式，编写一个视图并创建一个模板。此外，还将修改显示所有主题的页面，让每个项目列表项都变为到相应主题页面的链接。
+#### URL模式
+显示特定主题的页面的URL模式与前面的所有URL模式都稍有不同，因为它使用主题的`id` 属性来指出请求的是哪个主题。例如，如果用户要查看主题`Chess（其id 为1）`的详细页面，URL将为`http://localhost:8000/topics/1/`。下面是与这个URL匹配的模式，应将其放在`learning_logs/ urls.py`中
+```python
+--snip--
+urlpatterns = [
+--snip--
+# 特定主题的详细页面。
+path('topics/<int:topic_id>/', views.topic, name='topic'),
+]
+```
+我们来详细研究这个URL模式中的字符串`topics/<int:topic_id>/` 。这个字符串的第一部分让
+Django查找在基础URL后包含单词topics的URL，第二部分（`/<int:topic_id>/` ）与包含在两个斜杠内的整数匹配，并将这个整数存储在一个名为`topic_id` 的实参中。发现URL与这个模式匹配时，Django将调用视图函数`topic()`，并将存储在`topic_id` 中的值作为实参传递给它。在这个函数中，将使用`topic_id` 的值来获取相应的主题。
+
+#### 视图
+函数`topic()` 需要从数据库中获取指定的主题以及与之相关联的所有条目，如下所示
+```python
+--snip--
+❶ def topic(request, topic_id):
+"""显示单个主题及其所有的条目。"""
+❷ topic = Topic.objects.get(id=topic_id)
+❸ entries = topic.entry_set.order_by('-date_added')
+❹ context = {'topic': topic, 'entries': entries}
+❺ return render(request, 'learning_logs/topic.html', context)
+```
+这是除`request` 对象外，第一个还包含另一个形参的视图函数。这个函数接受表达式`/<int:topic_id>/` 捕获的值，并将其存储到`topic_id` 中（见❶）。在❷处，使用`get()` 来获取指定的主题，就像前面在Django shell中所做的那样。在❸处，获取与该主题相关联的条目，并根据date_added 进行排序：date_added 前面的减号指定按降序排列，即先显示最近的条目。将主题和条目都存储在字典`context` 中（见❹），再将这个字典发送给模板`topic.html`（见❺）。
+
+注意 ❷处和❸处的代码称为查询 ，因为它们向数据库查询了特定的信息。在自己的项目中编写这样的查询时，先在Django shell中进行尝试大有裨益。比起先编写视图和模板、再在浏览器中检查结果，在shell中执行代码可更快获得反馈。
+
+#### 模板
+这个模板需要显示主题的名称和条目的内容。如果当前主题不包含任何条目，还需向用户指出这一点：
+```html
+{% extends 'learning_logs/base.html' %}
+{% block content %}
+❶ <p>Topic: {{ topic }}</p>
+<p>Entries:</p>
+❷ <ul>
+❸ {% for entry in entries %}
+<li>
+❹ <p>{{ entry.date_added|date:'M d, Y H:i' }}</p>
+❺ <p>{{ entry.text|linebreaks }}</p>
+</li>
+❻ {% empty %}
+<li>There are no entries for this topic yet.</li>
+{% endfor %}
+</ul>
+{% endblock content %}
+```
+像这个项目的其他页面一样，这里也继承了`base.html`。接下来，显示当前的主题（见❶），它存储在模板变量`{{ topic}}` 中。为什么可以使用变量`topic` 呢？因为它包含在字典`context` 中。接下来，定义一个显示每个条目的项目列表（见❷），并像前面显示所有主题一样遍历条目（见❸）。
+
+每个项目列表项都将列出两项信息：条目的时间戳和完整的文本。为列出时间戳（见❹），我们显示属性`date_added` 的值。在Django模板中，竖线（| ）表示模板过滤器 ，即对模板变量的值进行修改的函数。过滤器`date: 'M d, Y H:i'` 以类似于这样的格式显示时间戳：`January 1, 2018 23:00`。接下来的一行显示text 的完整值，而不仅仅是前50字符。过滤器`linebreaks` （见❺）将包含换行符的长条目转换为浏览器能够理解的格式，以免显示为不间断的文本块。在❻处，使用模板标签`{% empty %}` 打印一条消息，告诉用户当前主题还没有条目。
