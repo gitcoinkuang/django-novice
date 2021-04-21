@@ -546,3 +546,33 @@ return render(request, 'learning_logs/new_topic.html', context)
 保存数据后，就可离开这个页面了。为此，使用`redirect()`将用户的浏览器重定向到页面`topics` （见❻）。在页面`topics` 中，用户将在主题列表中看到他刚输入的主题。
 
 我们在这个视图函数的末尾定义了变量`context` ，并使用稍后将创建的模板`new_topic.html`来渲染页面。这些代码不在if 代码块内，因此无论是用户刚进入`new_topic` 页面还是提交的表单数据无效，这些代码都将执行。用户提交的表单数据无效时，将显示一些默认的错误消息，帮助用户提供有效的数据。
+
+#### 模板new_topic
+下面来创建新模板new_topic.html，用于显示刚创建的表单
+```html
+{% extends "learning_logs/base.html" %}
+{% block content %}
+<p>Add a new topic:</p>
+❶ <form action="{% url 'learning_logs:new_topic' %}" method='post'>
+❷ {% csrf_token %}
+❸ {{ form.as_p }}
+❹ <button name="submit">Add topic</button>
+</form>
+{% endblock content %}
+```
+这个模板继承了`base.html`，因此其基本结构与项目“学习笔记”的其他页面相同。在❶处，定义了一个HTML表单。实参`action` 告诉服务器将提交的表单数据发送到哪里。这里将它发回给视图函数`new_topic()` 。实参`method` 让浏览器以`POST`请求的方式提交数据。
+
+Django使用模板标签`{% csrf_token %}` （见❷）来防止攻击者利用表单来获得对服务器未经授权的访问（这种攻击称为跨站请求伪造 ）。❸处显示表单，从中可知Django使得完成显示表单等任务有多简单：只需包含模板变量`{{ form.as_p}}` ，就可让Django自动创建显示表单所需的全部字段。修饰符`as_p` 让Django以段落格式渲染所有表单元素，这是一种整洁地显示表单的简单方式。Django不会为表单创建提交按钮，因此我们在❹处定义了一个
+
+#### 链接到页面new_topic
+下面在页面`topics` 中添加到页面`new_topic` 的链接
+```html
+{% extends "learning_logs/base.html" %}
+{% block content %}
+<p>Topics</p>
+<ul>
+--snip--
+</ul>
+<a href="{% url 'learning_logs:new_topic' %}">Add a new topic</a>
+{% endblock content %}
+```
